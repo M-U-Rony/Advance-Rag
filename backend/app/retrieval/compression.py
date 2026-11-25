@@ -8,6 +8,8 @@ with the query; at least the best sentence is always kept.
 
 from __future__ import annotations
 
+import itertools
+
 from app.text import content_terms, split_sentences
 
 
@@ -17,6 +19,14 @@ def sentence_scores(query: str, sentences: list[str]) -> list[float]:
     if not q_terms:
         return [0.0] * len(sentences)
     return [len(q_terms & set(content_terms(s))) / len(q_terms) for s in sentences]
+
+
+def bigram_overlap(query: str, sentence: str) -> float:
+    """Fraction of the query's adjacent content-word pairs that also occur in ``sentence``."""
+    q = content_terms(query)
+    s = content_terms(sentence)
+    q_pairs = set(itertools.pairwise(q))
+    return len(q_pairs & set(itertools.pairwise(s))) / len(q_pairs) if q_pairs else 0.0
 
 
 def compress_text(query: str, text: str, min_score: float = 0.15, max_sentences: int = 4) -> str:

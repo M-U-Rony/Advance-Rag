@@ -14,7 +14,7 @@ from typing import Any, Protocol
 
 from app.config import Settings
 from app.generation.prompts import NO_ANSWER, ContextItem
-from app.retrieval.compression import sentence_scores
+from app.retrieval.compression import bigram_overlap, sentence_scores
 from app.text import split_sentences
 
 
@@ -162,7 +162,9 @@ class ExtractiveGenerator:
                 zip(sentences, sentence_scores(question, sentences), strict=True)
             ):
                 if score >= self.min_score:
-                    candidates.append((score - 0.01 * item.index, item.index, pos, sent))
+                    # prefer passages the retriever ranked first, and phrase (bigram) matches
+                    bonus = 0.3 * bigram_overlap(question, sent) - 0.05 * item.index
+                    candidates.append((score + bonus, item.index, pos, sent))
         if not candidates:
             return NO_ANSWER
         best = sorted(candidates, key=lambda c: -c[0])[: self.max_sentences]
