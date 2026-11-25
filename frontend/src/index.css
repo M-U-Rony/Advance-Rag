@@ -1,0 +1,106 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --color-ink-950: #07070d;
+  --color-ink-900: #0b0b14;
+  --color-ink-850: #0f0f1a;
+  --color-ink-800: #141422;
+  --color-ink-700: #1c1c2e;
+  --color-accent: #818cf8;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink-950);
+  color: #e6e6f2;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a40 transparent;
+}
+
+.bg-aurora {
+  background:
+    radial-gradient(60rem 30rem at 15% -10%, rgb(99 102 241 / 0.16), transparent 60%),
+    radial-gradient(50rem 30rem at 100% 0%, rgb(168 85 247 / 0.12), transparent 55%),
+    var(--color-ink-950);
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, #a5b4fc, #c4b5fd 50%, #f0abfc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.prose-chat p {
+  margin: 0 0 0.75rem;
+  line-height: 1.7;
+}
+.prose-chat p:last-child {
+  margin-bottom: 0;
+}
+.prose-chat ul,
+.prose-chat ol {
+  margin: 0 0 0.75rem 1.25rem;
+  padding: 0;
+}
+.prose-chat ul {
+  list-style: disc;
+}
+.prose-chat ol {
+  list-style: decimal;
+}
+.prose-chat code {
+  background: rgb(255 255 255 / 0.08);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+  font-size: 0.85em;
+  font-family: var(--font-mono);
+}
+.prose-chat pre {
+  background: #0a0a14;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  padding: 0.75rem;
+  border-radius: 0.6rem;
+  overflow-x: auto;
+}
+.prose-chat strong {
+  color: #fff;
+}
+
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 1rem;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: #a5b4fc;
+  border-radius: 2px;
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
