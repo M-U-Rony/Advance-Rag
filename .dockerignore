@@ -1,13 +1,10 @@
 .git
 .github
 **/node_modules
-**/.venv
-**/__pycache__
-**/.pytest_cache
-**/.ruff_cache
-frontend/dist
+**/dist
+**/coverage
 backend/static
-backend/tests
+backend/test
 data
 docs
 .env

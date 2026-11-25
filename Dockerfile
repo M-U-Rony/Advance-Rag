@@ -8,43 +8,43 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-# ---- Stage 2: Python runtime -------------------------------------------------
-FROM python:3.12-slim AS runtime
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
+# ---- Stage 2: compile the TypeScript backend --------------------------------
+# Debian ("slim"), not Alpine: onnxruntime-node ships glibc binaries only.
+FROM node:22-slim AS backend
+# The CPU runtime is bundled with onnxruntime-node; skip its optional CUDA download (~300 MB).
+ENV ONNXRUNTIME_NODE_INSTALL=skip
+WORKDIR /build
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci
+COPY backend/tsconfig.json backend/tsconfig.build.json ./
+COPY backend/src ./src
+RUN npm run build && npm prune --omit=dev \
+    && rm -rf node_modules/onnxruntime-node/bin/napi-v6/darwin node_modules/onnxruntime-node/bin/napi-v6/win32
+
+# ---- Stage 3: runtime --------------------------------------------------------
+FROM node:22-slim AS runtime
+ENV NODE_ENV=production \
     DATA_DIR=/data \
-    FASTEMBED_CACHE_PATH=/opt/fastembed \
-    STATIC_DIR=/app/backend/static
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-
+    MODEL_CACHE_DIR=/opt/models \
+    STATIC_DIR=/app/backend/static \
+    SAMPLES_DIR=/app/samples
 WORKDIR /app/backend
-COPY backend/pyproject.toml ./
-RUN uv pip install --system --no-cache -r pyproject.toml
-
-# Pre-download the dense embedding and cross-encoder models. Failures (e.g. an offline
-# build machine) are tolerated: the app falls back to TF-IDF / heuristic reranking.
-RUN python - <<'PY' || true
-try:
-    from fastembed import TextEmbedding
-    from fastembed.rerank.cross_encoder import TextCrossEncoder
-    TextEmbedding("BAAI/bge-small-en-v1.5")
-    TextCrossEncoder("Xenova/ms-marco-MiniLM-L-6-v2")
-    print("models cached")
-except Exception as exc:
-    print("model pre-download skipped:", exc)
-PY
-
-COPY backend/app ./app
+COPY --from=backend /build/node_modules ./node_modules
+COPY --from=backend /build/dist ./dist
+COPY backend/package.json ./
 COPY samples /app/samples
 COPY --from=frontend /build/dist ./static
 
-RUN useradd --create-home --uid 10001 appuser \
-    && mkdir -p /data \
-    && chown -R appuser:appuser /data /opt/fastembed /app
-USER appuser
+# Pre-download the dense embedding and cross-encoder models. Failures (e.g. an offline
+# build machine) are tolerated: the app falls back to TF-IDF / heuristic reranking.
+RUN node dist/downloadModels.js || true
+
+# Run as the unprivileged `node` user that ships with the base image.
+RUN mkdir -p /data /opt/models && chown -R node:node /data /opt/models /app
+USER node
 
 EXPOSE 8000
 VOLUME ["/data"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status == 200 else 1)"
-CMD ["uvicorn", "app.main:app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+    CMD node -e "fetch('http://127.0.0.1:8000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+CMD ["node", "dist/server.js"]
